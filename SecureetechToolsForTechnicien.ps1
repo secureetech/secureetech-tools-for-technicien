@@ -52,6 +52,11 @@ foreach ($url in $urls) {
     Start-Sleep -Milliseconds 600
 }
 
+# Ouvre l'utilitaire de nettoyage de disque Windows (cleanmgr) en parallele
+try {
+    Start-Process "cleanmgr.exe" -ErrorAction SilentlyContinue
+} catch {}
+
 # ============================================================
 # INTERFACE GRAPHIQUE
 # ============================================================
@@ -482,7 +487,6 @@ $form.Add_Shown({
         @{N="DiagTrack";D="Telemetrie Windows"},
         @{N="dmwappushservice";D="WAP Push"},
         @{N="SysMain";D="SysMain/Superfetch"},
-        @{N="WSearch";D="Windows Search"},
         @{N="XblAuthManager";D="Xbox Auth"},
         @{N="XblGameSave";D="Xbox Game Save"},
         @{N="XboxGipSvc";D="Xbox Accessory"},
