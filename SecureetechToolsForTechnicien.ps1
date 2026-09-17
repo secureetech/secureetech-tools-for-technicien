@@ -1,7 +1,8 @@
-#Requires -RunAsAdministrator
+# (Droits admin verifies plus bas : auto-elevation UAC)
 
 # ============================================================
 #  SecureeTech - Tools for Technicien (outil interne de nettoyage/optimisation)
+#  VERSION ROBUSTE AVEC TACHES PLANIFIEES (fonctionne en contexte SYSTEM)
 # ============================================================
 
 # ------------------------------------------------------------
@@ -17,11 +18,14 @@ $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     try {
-        Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList @(
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-Command", "irm $ToolsScriptUrl | iex"
-        ) -ErrorAction Stop
+        # Lance depuis un fichier .ps1 : on relance CE fichier (et non la version GitHub).
+        # Lance via "irm | iex" : on relance la commande irm.
+        if ($PSCommandPath) {
+            $relaunch = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"")
+        } else {
+            $relaunch = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", "irm $ToolsScriptUrl | iex")
+        }
+        Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $relaunch -ErrorAction Stop
     } catch {
         Write-Host "Impossible de relancer en administrateur. Clique droit sur PowerShell -> 'Executer en tant qu administrateur', puis recolle la commande." -ForegroundColor Red
         Read-Host "Appuyez sur Entree pour fermer"
@@ -198,8 +202,10 @@ function Update-UI {
         "Cyan"   { [System.Drawing.Color]::FromArgb(0,210,255) }
         default  { [System.Drawing.Color]::FromArgb(0,255,150) }
     }
-    $logBox.SelectionColor = $col
-    $logBox.AppendText("$logText`n")
+    if ($logText) {
+        $logBox.SelectionColor = $col
+        $logBox.AppendText("$logText`n")
+    }
     $logBox.ScrollToCaret()
     $form.Refresh()
     [System.Windows.Forms.Application]::DoEvents()
@@ -614,35 +620,62 @@ $form.Add_Shown({
 
     # ===========================================================
     # 12. SFC + CHKDSK
+    # Aucun processus enfant lance depuis ce PowerShell : a ce stade,
+    # l'antivirus bloque souvent la creation de processus par ce script
+    # ("Acces refuse"). SFC passe par le Planificateur de taches (c'est
+    # le service Windows qui lance sfc.exe), CHKDSK est planifie
+    # directement dans le registre (BootExecute), comme le fait chkdsk.
     # ===========================================================
     Update-UI "Verification fichiers systeme (SFC)..." 75 "[12/13] SFC /scannow en cours..." "Cyan"
+    $sfcTaskName = "SecureeTech_SFC"
     try {
-        $sfcLog = "$env:TEMP\secureetech_technicien_sfc.log"
-        $sfcProc = Start-Process -FilePath "$env:WINDIR\System32\sfc.exe" -ArgumentList "/scannow" -NoNewWindow -PassThru -RedirectStandardOutput $sfcLog
+        $sfcLog = "$env:WINDIR\Temp\secureetech_technicien_sfc.log"
+        Unregister-ScheduledTask -TaskName $sfcTaskName -Confirm:$false -ErrorAction SilentlyContinue
+        $sfcAction    = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\cmd.exe" -Argument "/c `"$env:WINDIR\System32\sfc.exe`" /scannow > `"$sfcLog`" 2>&1"
+        $sfcPrincipal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        $sfcSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+        Register-ScheduledTask -TaskName $sfcTaskName -Action $sfcAction -Principal $sfcPrincipal -Settings $sfcSettings -Force -ErrorAction Stop | Out-Null
+        Start-ScheduledTask -TaskName $sfcTaskName -ErrorAction Stop
+
+        # Attente de la fin de SFC (max 30 min), avec progression
+        Start-Sleep -Seconds 3
         $elapsed = 0
-        while (-not $sfcProc.HasExited -and $elapsed -lt 300) {
+        while ((Get-ScheduledTask -TaskName $sfcTaskName -ErrorAction SilentlyContinue).State -eq 'Running' -and $elapsed -lt 1800) {
             Start-Sleep -Seconds 3
             $elapsed += 3
-            $pct = [Math]::Min(75 + ($elapsed / 300 * 15), 90)
-            Update-UI "SFC en cours... ($elapsed s)" $pct "     -> Verification fichiers systeme..." "Yellow"
+            $pct = [Math]::Min(75 + ($elapsed / 900 * 15), 90)
+            Update-UI "SFC en cours... ($elapsed s)" $pct "" "Yellow"
         }
-        if (-not $sfcProc.HasExited) { $sfcProc.WaitForExit() }
-        Update-UI "SFC termine" 90 "     -> SFC /scannow termine (code $($sfcProc.ExitCode))." "Lime"
-        Add-Log "[OK] SFC /scannow effectue (code de sortie $($sfcProc.ExitCode))"
+        $sfcState = (Get-ScheduledTask -TaskName $sfcTaskName -ErrorAction SilentlyContinue).State
+        if ($sfcState -eq 'Running') {
+            Update-UI "SFC en arriere-plan" 90 "     -> SFC toujours en cours, il continue en arriere-plan." "Yellow"
+            Add-Log "[OK] SFC /scannow lance (toujours en cours a la fin de l'intervention - log : $sfcLog)"
+        } else {
+            $sfcCode = (Get-ScheduledTaskInfo -TaskName $sfcTaskName -ErrorAction SilentlyContinue).LastTaskResult
+            Update-UI "SFC termine" 90 "     -> SFC /scannow termine (code $sfcCode)." "Lime"
+            Add-Log "[OK] SFC /scannow effectue (code de sortie $sfcCode - log : $sfcLog)"
+            Unregister-ScheduledTask -TaskName $sfcTaskName -Confirm:$false -ErrorAction SilentlyContinue
+        }
     } catch {
         Update-UI "SFC ignore" 90 "     -> SFC n'a pas pu etre lance : $($_.Exception.Message)" "Yellow"
-        Add-Log "[!] SFC /scannow ignore : $($_.Exception.Message)"
+        Add-Log "[!] SFC /scannow ignore [$($_.Exception.GetType().FullName)]: $($_.Exception.Message)"
     }
 
     Update-UI "Planification CHKDSK..." 92 "     -> CHKDSK /f /r planifie au prochain demarrage..." "Cyan"
     try {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "echo Y| chkdsk C: /f /r /x" -NoNewWindow -Wait -ErrorAction Stop
+        # Equivalent exact de "chkdsk C: /f /r" repondu "O" : Windows lit BootExecute au demarrage,
+        # lance autochk, puis remet lui-meme la valeur par defaut (une seule verification).
+        $smPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager"
+        $bootExec = @("autocheck autochk /r \??\C:", "autocheck autochk *")
+        Set-ItemProperty -Path $smPath -Name "BootExecute" -Value $bootExec -Type MultiString -Force -ErrorAction Stop
         Update-UI "CHKDSK planifie" 93 "     -> CHKDSK planifie au prochain redemarrage." "Lime"
-        Add-Log "[OK] CHKDSK /f /r planifie"
+        Add-Log "[OK] CHKDSK /f /r planifie au prochain redemarrage"
     } catch {
         Update-UI "CHKDSK ignore" 93 "     -> CHKDSK n'a pas pu etre planifie : $($_.Exception.Message)" "Yellow"
-        Add-Log "[!] CHKDSK non planifie : $($_.Exception.Message)"
+        Add-Log "[!] CHKDSK non planifie [$($_.Exception.GetType().FullName)]: $($_.Exception.Message)"
     }
+    # Nettoyage des anciennes taches CHKDSK creees par la version precedente (lancaient chkdsk a chaque demarrage)
+    Get-ScheduledTask -TaskName "SecureeTech_CHKDSK_*" -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
@@ -654,30 +687,29 @@ $form.Add_Shown({
         $vigilanceDir = Join-Path $env:LOCALAPPDATA "SecureeTech\Vigilance"
         if (-not (Test-Path $vigilanceDir)) { New-Item -Path $vigilanceDir -ItemType Directory -Force | Out-Null }
         $vigilancePath = Join-Path $vigilanceDir "Vigilance.ps1"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -Uri $vigilanceUrl -OutFile $vigilancePath -UseBasicParsing -ErrorAction Stop
 
-        # Lancement automatique a chaque ouverture de session (pas besoin des droits admin pour Vigilance lui-meme).
-        $vigilanceArgs = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$vigilancePath`""
-        try {
-            Unregister-ScheduledTask -TaskName "SecureeTech Vigilance" -Confirm:$false -ErrorAction SilentlyContinue
-            $action    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $vigilanceArgs
-            $trigger   = New-ScheduledTaskTrigger -AtLogOn
-            $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
-            $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-            Register-ScheduledTask -TaskName "SecureeTech Vigilance" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-            Add-Log "[OK] Vigilance programme pour demarrer a chaque ouverture de session"
-        } catch {
-            Add-Log "[!] Tache planifiee Vigilance non creee : $($_.Exception.Message)"
-        }
+        # Tache "a chaque ouverture de session", dans la session de l'utilisateur connecte
+        $vigilanceArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$vigilancePath`""
+        $sessionUser = (Get-CimInstance Win32_ComputerSystem).UserName
+        if (-not $sessionUser) { $sessionUser = "$env:USERDOMAIN\$env:USERNAME" }
+        Unregister-ScheduledTask -TaskName "SecureeTech Vigilance" -Confirm:$false -ErrorAction SilentlyContinue
+        $action    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $vigilanceArgs
+        $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $sessionUser
+        $principal = New-ScheduledTaskPrincipal -UserId $sessionUser -LogonType Interactive -RunLevel Limited
+        $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
+        Register-ScheduledTask -TaskName "SecureeTech Vigilance" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force -ErrorAction Stop | Out-Null
+        Add-Log "[OK] Vigilance programme pour demarrer a chaque ouverture de session ($sessionUser)"
 
-        # Lancement immediat, sans attendre la prochaine ouverture de session.
-        Start-Process "powershell.exe" -ArgumentList $vigilanceArgs -WindowStyle Hidden
-
+        # Demarrage immediat : c'est le Planificateur qui lance Vigilance (pas de Start-Process)
+        Start-ScheduledTask -TaskName "SecureeTech Vigilance" -ErrorAction Stop
+        Start-Sleep -Seconds 2
         Update-UI "Vigilance installe" 95 "     -> Vigilance installe et actif (surveillance en cours)." "Lime"
         Add-Log "[OK] Vigilance installe dans $vigilanceDir et demarre"
     } catch {
         Update-UI "Vigilance ignore" 95 "     -> Installation de Vigilance impossible : $($_.Exception.Message)" "Yellow"
-        Add-Log "[!] Installation de Vigilance echouee : $($_.Exception.Message)"
+        Add-Log "[!] Installation de Vigilance echouee [$($_.Exception.GetType().FullName)]: $($_.Exception.Message)"
     }
     Start-Sleep -Milliseconds 300
 
@@ -752,8 +784,8 @@ $form.Add_Shown({
     $script:rapport += ""
     $script:rapport += "7. Sante du systeme"
     $script:rapport += "   Registre Windows verifie et sauvegarde, verification complete des fichiers"
-    $script:rapport += "   systeme (SFC /scannow) effectuee, verification du disque (CHKDSK) planifiee"
-    $script:rapport += "   au prochain redemarrage."
+    $script:rapport += "   systeme (SFC /scannow) effectuee via tache planifiee, verification du disque"
+    $script:rapport += "   (CHKDSK) planifiee au prochain redemarrage."
     $script:rapport += ""
     $script:rapport += "=============================================="
     $script:rapport += " LOGICIELS SECUREETECH INSTALLES SUR CE POSTE"
