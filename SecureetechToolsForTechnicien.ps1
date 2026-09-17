@@ -37,6 +37,45 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName Microsoft.VisualBasic
+
+# ============================================================
+# INFOS CLIENT POUR VIGILANCE (demandees UNE SEULE FOIS, au debut)
+# Enregistrees dans config.json, dans le profil de l'utilisateur
+# connecte : Vigilance les relit a chaque demarrage du PC et ne les
+# redemande plus (modifiables ensuite par clic droit sur l'icone).
+# ============================================================
+$script:VigSessionUser = (Get-CimInstance Win32_ComputerSystem).UserName
+if (-not $script:VigSessionUser) { $script:VigSessionUser = "$env:USERDOMAIN\$env:USERNAME" }
+$script:VigDossier = Join-Path $env:LOCALAPPDATA "SecureeTech\Vigilance"
+try {
+    $vigSid = (New-Object System.Security.Principal.NTAccount($script:VigSessionUser)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+    $vigProfil = (Get-CimInstance Win32_UserProfile -Filter "SID='$vigSid'" -ErrorAction Stop).LocalPath
+    if ($vigProfil) { $script:VigDossier = Join-Path $vigProfil "AppData\Local\SecureeTech\Vigilance" }
+} catch {}
+$vigConfig = Join-Path $script:VigDossier "config.json"
+$vigDejaConfigure = $false
+if (Test-Path $vigConfig) {
+    try {
+        $vigCfg = Get-Content $vigConfig -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($vigCfg.Nom) { $vigDejaConfigure = $true }
+    } catch {}
+}
+if (-not $vigDejaConfigure) {
+    $vigNom = [Microsoft.VisualBasic.Interaction]::InputBox(
+        'Nom du client (affiche sur le tableau de bord Vigilance) :',
+        'SecureeTech - Infos client', $env:COMPUTERNAME)
+    if (-not $vigNom) { $vigNom = $env:COMPUTERNAME }
+    $vigTel = [Microsoft.VisualBasic.Interaction]::InputBox(
+        'Telephone du client (optionnel) :',
+        'SecureeTech - Infos client', '')
+    try {
+        if (-not (Test-Path $script:VigDossier)) { New-Item -Path $script:VigDossier -ItemType Directory -Force | Out-Null }
+        ([pscustomobject]@{ Nom = $vigNom; Telephone = $vigTel } | ConvertTo-Json) | Set-Content -Path $vigConfig -Encoding UTF8
+    } catch {
+        Write-Host "Infos client non enregistrees : $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
 
 # ============================================================
 # OUVERTURE DES PAGES DE TELECHARGEMENT
@@ -684,7 +723,7 @@ $form.Add_Shown({
     Update-UI "Installation de Vigilance..." 94 "[13/13] Installation du logiciel Vigilance (anti-escroquerie)..." "Cyan"
     try {
         $vigilanceUrl = "https://raw.githubusercontent.com/secureetech/secureetech-tools-for-technicien/main/Vigilance.ps1"
-        $vigilanceDir = Join-Path $env:LOCALAPPDATA "SecureeTech\Vigilance"
+        $vigilanceDir = $script:VigDossier
         if (-not (Test-Path $vigilanceDir)) { New-Item -Path $vigilanceDir -ItemType Directory -Force | Out-Null }
         $vigilancePath = Join-Path $vigilanceDir "Vigilance.ps1"
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -692,8 +731,7 @@ $form.Add_Shown({
 
         # Tache "a chaque ouverture de session", dans la session de l'utilisateur connecte
         $vigilanceArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$vigilancePath`""
-        $sessionUser = (Get-CimInstance Win32_ComputerSystem).UserName
-        if (-not $sessionUser) { $sessionUser = "$env:USERDOMAIN\$env:USERNAME" }
+        $sessionUser = $script:VigSessionUser
         Unregister-ScheduledTask -TaskName "SecureeTech Vigilance" -Confirm:$false -ErrorAction SilentlyContinue
         $action    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $vigilanceArgs
         $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $sessionUser

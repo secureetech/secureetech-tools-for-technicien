@@ -812,6 +812,10 @@ if ($Diag) {
 }
 
 # --- Mode normal : icone pres de l'horloge ---
+# Infos client demandees des le demarrage si elles n'ont jamais ete saisies
+# (une seule fois : ensuite elles sont relues depuis config.json a chaque demarrage).
+Obtenir-InfosClient | Out-Null
+
 $icone = New-Object System.Windows.Forms.NotifyIcon
 $icone.Icon    = [System.Drawing.SystemIcons]::Shield
 $icone.Text    = 'Vigilance - surveillance active'
