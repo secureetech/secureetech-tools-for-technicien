@@ -208,7 +208,7 @@ $form.Add_Shown({
     # ===========================================================
     # 1. POINT DE RESTAURATION
     # ===========================================================
-    Update-UI "Creation point de restauration..." 4 "[1/12] Point de restauration..." "Cyan"
+    Update-UI "Creation point de restauration..." 4 "[1/13] Point de restauration..." "Cyan"
     try {
         Enable-ComputerRestore -Drive "C:\" -ErrorAction SilentlyContinue
         # Windows ne cree qu'UN SEUL point de restauration automatique par 24h par defaut.
@@ -237,7 +237,7 @@ $form.Add_Shown({
     # 2. SUPPRESSION ANYTECH365 / PANORAMA9 / INTELLIGUARD / PANDA
     #    (version amelioree)
     # ===========================================================
-    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/12] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
+    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/13] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
 
     $keywords = @("AnyTech", "Panorama", "IntelliGuard", "Panda", "PSUA", "PSANHost", "AntiScam")
 
@@ -367,7 +367,7 @@ $form.Add_Shown({
     # ===========================================================
     # 3. BLOCAGE DOMAINES (anti-reinstallation)
     # ===========================================================
-    Update-UI "Blocage domaines..." 16 "[3/12] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
+    Update-UI "Blocage domaines..." 16 "[3/13] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
     $hostsPath = "C:\Windows\System32\drivers\etc\hosts"
     $hostsEntries = @(
         "127.0.0.1 anytech365.com",
@@ -398,7 +398,7 @@ $form.Add_Shown({
     # ===========================================================
     # 4. NETTOYAGE CACHES
     # ===========================================================
-    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/12] Nettoyage caches et fichiers temporaires..." "Cyan"
+    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/13] Nettoyage caches et fichiers temporaires..." "Cyan"
     $folders = @(
         $env:TEMP,
         $env:TMP,
@@ -429,7 +429,7 @@ $form.Add_Shown({
     # ===========================================================
     # 5. EFFETS VISUELS
     # ===========================================================
-    Update-UI "Effets visuels -> Performance..." 28 "[5/12] Effets visuels Windows -> Performance..." "Cyan"
+    Update-UI "Effets visuels -> Performance..." 28 "[5/13] Effets visuels Windows -> Performance..." "Cyan"
     $vePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
     if (!(Test-Path $vePath)) { New-Item $vePath -Force | Out-Null }
     Set-ItemProperty $vePath "VisualFXSetting" 2 -Force
@@ -441,7 +441,7 @@ $form.Add_Shown({
     # ===========================================================
     # 6. MODE ALIMENTATION
     # ===========================================================
-    Update-UI "Mode alimentation Haute Performance..." 33 "[6/12] Plan alimentation Haute Performance..." "Cyan"
+    Update-UI "Mode alimentation Haute Performance..." 33 "[6/13] Plan alimentation Haute Performance..." "Cyan"
     powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 2>$null
     Update-UI "Haute Performance OK" 35 "     -> Plan Haute Performance active." "Lime"
     Add-Log "[OK] Plan alimentation -> Haute Performance"
@@ -449,7 +449,7 @@ $form.Add_Shown({
     # ===========================================================
     # 7. RAM VIRTUELLE
     # ===========================================================
-    Update-UI "Configuration RAM virtuelle..." 37 "[7/12] RAM virtuelle..." "Cyan"
+    Update-UI "Configuration RAM virtuelle..." 37 "[7/13] RAM virtuelle..." "Cyan"
     $ramBytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
     $ramGB2 = [Math]::Round($ramBytes / 1GB)
     $initMB = $ramGB2 * 1024
@@ -477,7 +477,7 @@ $form.Add_Shown({
     # ===========================================================
     # 8. SERVICES INUTILES
     # ===========================================================
-    Update-UI "Desactivation services inutiles..." 42 "[8/12] Arret services telemetrie, Xbox, etc..." "Cyan"
+    Update-UI "Desactivation services inutiles..." 42 "[8/13] Arret services telemetrie, Xbox, etc..." "Cyan"
     $services = @(
         @{N="DiagTrack";D="Telemetrie Windows"},
         @{N="dmwappushservice";D="WAP Push"},
@@ -514,7 +514,7 @@ $form.Add_Shown({
     # ===========================================================
     # 9. DESACTIVATION DEMARRAGE
     # ===========================================================
-    Update-UI "Desactivation programmes au demarrage..." 52 "[9/12] Desactivation programmes demarrage auto..." "Cyan"
+    Update-UI "Desactivation programmes au demarrage..." 52 "[9/13] Desactivation programmes demarrage auto..." "Cyan"
     $startupKeys = @(
         "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
@@ -543,7 +543,7 @@ $form.Add_Shown({
     # ===========================================================
     # 10. TELEMETRIE REGISTRE
     # ===========================================================
-    Update-UI "Desactivation telemetrie..." 58 "[10/12] Telemetrie et pub Windows desactivees..." "Cyan"
+    Update-UI "Desactivation telemetrie..." 58 "[10/13] Telemetrie et pub Windows desactivees..." "Cyan"
     $keys = @(
         @{P="HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection";N="AllowTelemetry";V=0},
         @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection";N="AllowTelemetry";V=0},
@@ -566,7 +566,7 @@ $form.Add_Shown({
     # ===========================================================
     # 11. REPARATION REGISTRE
     # ===========================================================
-    Update-UI "Reparation du registre..." 64 "[11/12] Reparation registre Windows..." "Cyan"
+    Update-UI "Reparation du registre..." 64 "[11/13] Reparation registre Windows..." "Cyan"
     # Execution directe (sans Start-Job) : Start-Job demarre un processus PowerShell
     # separe qui peut se voir refuser l'acces par l'antivirus ou perdre les droits admin
     # (c'est la cause des erreurs "Acces refuse" / PSRemotingTransportException observees).
@@ -611,7 +611,7 @@ $form.Add_Shown({
     # ===========================================================
     # 12. SFC + CHKDSK
     # ===========================================================
-    Update-UI "Verification fichiers systeme (SFC)..." 75 "[12/12] SFC /scannow en cours..." "Cyan"
+    Update-UI "Verification fichiers systeme (SFC)..." 75 "[12/13] SFC /scannow en cours..." "Cyan"
     try {
         $sfcLog = "$env:TEMP\secureetech_technicien_sfc.log"
         $sfcProc = Start-Process -FilePath "$env:WINDIR\System32\sfc.exe" -ArgumentList "/scannow" -NoNewWindow -PassThru -RedirectStandardOutput $sfcLog
@@ -642,9 +642,45 @@ $form.Add_Shown({
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
+    # 13. INSTALLATION DE VIGILANCE (anti-escroquerie)
+    # ===========================================================
+    Update-UI "Installation de Vigilance..." 94 "[13/13] Installation du logiciel Vigilance (anti-escroquerie)..." "Cyan"
+    try {
+        $vigilanceUrl = "https://raw.githubusercontent.com/secureetech/secureetech-tools-for-technicien/main/Vigilance.ps1"
+        $vigilanceDir = Join-Path $env:LOCALAPPDATA "SecureeTech\Vigilance"
+        if (-not (Test-Path $vigilanceDir)) { New-Item -Path $vigilanceDir -ItemType Directory -Force | Out-Null }
+        $vigilancePath = Join-Path $vigilanceDir "Vigilance.ps1"
+        Invoke-WebRequest -Uri $vigilanceUrl -OutFile $vigilancePath -UseBasicParsing -ErrorAction Stop
+
+        # Lancement automatique a chaque ouverture de session (pas besoin des droits admin pour Vigilance lui-meme).
+        $vigilanceArgs = "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$vigilancePath`""
+        try {
+            Unregister-ScheduledTask -TaskName "SecureeTech Vigilance" -Confirm:$false -ErrorAction SilentlyContinue
+            $action    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $vigilanceArgs
+            $trigger   = New-ScheduledTaskTrigger -AtLogOn
+            $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+            $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+            Register-ScheduledTask -TaskName "SecureeTech Vigilance" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+            Add-Log "[OK] Vigilance programme pour demarrer a chaque ouverture de session"
+        } catch {
+            Add-Log "[!] Tache planifiee Vigilance non creee : $($_.Exception.Message)"
+        }
+
+        # Lancement immediat, sans attendre la prochaine ouverture de session.
+        Start-Process "powershell.exe" -ArgumentList $vigilanceArgs -WindowStyle Hidden
+
+        Update-UI "Vigilance installe" 95 "     -> Vigilance installe et actif (surveillance en cours)." "Lime"
+        Add-Log "[OK] Vigilance installe dans $vigilanceDir et demarre"
+    } catch {
+        Update-UI "Vigilance ignore" 95 "     -> Installation de Vigilance impossible : $($_.Exception.Message)" "Yellow"
+        Add-Log "[!] Installation de Vigilance echouee : $($_.Exception.Message)"
+    }
+    Start-Sleep -Milliseconds 300
+
+    # ===========================================================
     # RAPPORT
     # ===========================================================
-    Update-UI "Generation rapport..." 95 "Collecte informations systeme..." "Cyan"
+    Update-UI "Generation rapport..." 96 "Collecte informations systeme..." "Cyan"
     $os       = Get-CimInstance Win32_OperatingSystem
     $cpu      = Get-CimInstance Win32_Processor | Select-Object -First 1
     $gpu      = Get-CimInstance Win32_VideoController | Select-Object -First 1
