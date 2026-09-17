@@ -87,7 +87,8 @@ $urls = @(
     "https://anydesk.com/fr/downloads/thank-you?dv=win_exe",
     "https://geekuninstaller.com/geek.zip",
     "https://ublockorigin.com/fr",
-    "https://www.i-dont-care-about-cookies.eu/"
+    "https://www.i-dont-care-about-cookies.eu/",
+    "https://g.page/r/CRNFENGGcTDHEBM/review"
 )
 
 foreach ($url in $urls) {
