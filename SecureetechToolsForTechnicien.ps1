@@ -258,7 +258,7 @@ $form.Add_Shown({
     # ===========================================================
     # 1. POINT DE RESTAURATION
     # ===========================================================
-    Update-UI "Creation point de restauration..." 4 "[1/13] Point de restauration..." "Cyan"
+    Update-UI "Creation point de restauration..." 4 "[1/12] Point de restauration..." "Cyan"
     try {
         Enable-ComputerRestore -Drive "C:\" -ErrorAction SilentlyContinue
         # Windows ne cree qu'UN SEUL point de restauration automatique par 24h par defaut.
@@ -287,7 +287,7 @@ $form.Add_Shown({
     # 2. SUPPRESSION ANYTECH365 / PANORAMA9 / INTELLIGUARD / PANDA
     #    (version amelioree)
     # ===========================================================
-    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/13] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
+    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/12] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
 
     $keywords = @("AnyTech", "Panorama", "IntelliGuard", "Panda", "PSUA", "PSANHost", "AntiScam")
 
@@ -417,7 +417,7 @@ $form.Add_Shown({
     # ===========================================================
     # 3. BLOCAGE DOMAINES (anti-reinstallation)
     # ===========================================================
-    Update-UI "Blocage domaines..." 16 "[3/13] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
+    Update-UI "Blocage domaines..." 16 "[3/12] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
     $hostsPath = "C:\Windows\System32\drivers\etc\hosts"
     $hostsEntries = @(
         "127.0.0.1 anytech365.com",
@@ -448,7 +448,7 @@ $form.Add_Shown({
     # ===========================================================
     # 4. NETTOYAGE CACHES
     # ===========================================================
-    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/13] Nettoyage caches et fichiers temporaires..." "Cyan"
+    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/12] Nettoyage caches et fichiers temporaires..." "Cyan"
     $folders = @(
         $env:TEMP,
         $env:TMP,
@@ -479,7 +479,7 @@ $form.Add_Shown({
     # ===========================================================
     # 5. EFFETS VISUELS
     # ===========================================================
-    Update-UI "Effets visuels -> Performance..." 28 "[5/13] Effets visuels Windows -> Performance..." "Cyan"
+    Update-UI "Effets visuels -> Performance..." 28 "[5/12] Effets visuels Windows -> Performance..." "Cyan"
     $vePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
     if (!(Test-Path $vePath)) { New-Item $vePath -Force | Out-Null }
     Set-ItemProperty $vePath "VisualFXSetting" 2 -Force
@@ -491,7 +491,7 @@ $form.Add_Shown({
     # ===========================================================
     # 6. MODE ALIMENTATION
     # ===========================================================
-    Update-UI "Mode alimentation Haute Performance..." 33 "[6/13] Plan alimentation Haute Performance..." "Cyan"
+    Update-UI "Mode alimentation Haute Performance..." 33 "[6/12] Plan alimentation Haute Performance..." "Cyan"
     powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 2>$null
     Update-UI "Haute Performance OK" 35 "     -> Plan Haute Performance active." "Lime"
     Add-Log "[OK] Plan alimentation -> Haute Performance"
@@ -499,7 +499,7 @@ $form.Add_Shown({
     # ===========================================================
     # 7. RAM VIRTUELLE
     # ===========================================================
-    Update-UI "Configuration RAM virtuelle..." 37 "[7/13] RAM virtuelle..." "Cyan"
+    Update-UI "Configuration RAM virtuelle..." 37 "[7/12] RAM virtuelle..." "Cyan"
     $ramBytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
     $ramGB2 = [Math]::Round($ramBytes / 1GB)
     $initMB = $ramGB2 * 1024
@@ -527,7 +527,7 @@ $form.Add_Shown({
     # ===========================================================
     # 8. SERVICES INUTILES
     # ===========================================================
-    Update-UI "Desactivation services inutiles..." 42 "[8/13] Arret services telemetrie, Xbox, etc..." "Cyan"
+    Update-UI "Desactivation services inutiles..." 42 "[8/12] Arret services telemetrie, Xbox, etc..." "Cyan"
     $services = @(
         @{N="DiagTrack";D="Telemetrie Windows"},
         @{N="dmwappushservice";D="WAP Push"},
@@ -563,7 +563,7 @@ $form.Add_Shown({
     # ===========================================================
     # 9. DESACTIVATION DEMARRAGE
     # ===========================================================
-    Update-UI "Desactivation programmes au demarrage..." 52 "[9/13] Desactivation programmes demarrage auto..." "Cyan"
+    Update-UI "Desactivation programmes au demarrage..." 52 "[9/12] Desactivation programmes demarrage auto..." "Cyan"
     $startupKeys = @(
         "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
@@ -592,7 +592,7 @@ $form.Add_Shown({
     # ===========================================================
     # 10. TELEMETRIE REGISTRE
     # ===========================================================
-    Update-UI "Desactivation telemetrie..." 58 "[10/13] Telemetrie et pub Windows desactivees..." "Cyan"
+    Update-UI "Desactivation telemetrie..." 58 "[10/12] Telemetrie et pub Windows desactivees..." "Cyan"
     $keys = @(
         @{P="HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection";N="AllowTelemetry";V=0},
         @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection";N="AllowTelemetry";V=0},
@@ -615,7 +615,7 @@ $form.Add_Shown({
     # ===========================================================
     # 11. REPARATION REGISTRE
     # ===========================================================
-    Update-UI "Reparation du registre..." 64 "[11/13] Reparation registre Windows..." "Cyan"
+    Update-UI "Reparation du registre..." 64 "[11/12] Reparation registre Windows..." "Cyan"
     # Execution directe (sans Start-Job) : Start-Job demarre un processus PowerShell
     # separe qui peut se voir refuser l'acces par l'antivirus ou perdre les droits admin
     # (c'est la cause des erreurs "Acces refuse" / PSRemotingTransportException observees).
@@ -658,69 +658,9 @@ $form.Add_Shown({
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
-    # 12. SFC + CHKDSK
-    # Aucun processus enfant lance depuis ce PowerShell : a ce stade,
-    # l'antivirus bloque souvent la creation de processus par ce script
-    # ("Acces refuse"). SFC passe par le Planificateur de taches (c'est
-    # le service Windows qui lance sfc.exe), CHKDSK est planifie
-    # directement dans le registre (BootExecute), comme le fait chkdsk.
+    # 12. INSTALLATION DE VIGILANCE (anti-escroquerie)
     # ===========================================================
-    Update-UI "Verification fichiers systeme (SFC)..." 75 "[12/13] SFC /scannow en cours..." "Cyan"
-    $sfcTaskName = "SecureeTech_SFC"
-    try {
-        $sfcLog = "$env:WINDIR\Temp\secureetech_technicien_sfc.log"
-        Unregister-ScheduledTask -TaskName $sfcTaskName -Confirm:$false -ErrorAction SilentlyContinue
-        $sfcAction    = New-ScheduledTaskAction -Execute "$env:WINDIR\System32\cmd.exe" -Argument "/c `"$env:WINDIR\System32\sfc.exe`" /scannow > `"$sfcLog`" 2>&1"
-        $sfcPrincipal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-        $sfcSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 2)
-        Register-ScheduledTask -TaskName $sfcTaskName -Action $sfcAction -Principal $sfcPrincipal -Settings $sfcSettings -Force -ErrorAction Stop | Out-Null
-        Start-ScheduledTask -TaskName $sfcTaskName -ErrorAction Stop
-
-        # Attente de la fin de SFC (max 30 min), avec progression
-        Start-Sleep -Seconds 3
-        $elapsed = 0
-        while ((Get-ScheduledTask -TaskName $sfcTaskName -ErrorAction SilentlyContinue).State -eq 'Running' -and $elapsed -lt 1800) {
-            Start-Sleep -Seconds 3
-            $elapsed += 3
-            $pct = [Math]::Min(75 + ($elapsed / 900 * 15), 90)
-            Update-UI "SFC en cours... ($elapsed s)" $pct "" "Yellow"
-        }
-        $sfcState = (Get-ScheduledTask -TaskName $sfcTaskName -ErrorAction SilentlyContinue).State
-        if ($sfcState -eq 'Running') {
-            Update-UI "SFC en arriere-plan" 90 "     -> SFC toujours en cours, il continue en arriere-plan." "Yellow"
-            Add-Log "[OK] SFC /scannow lance (toujours en cours a la fin de l'intervention - log : $sfcLog)"
-        } else {
-            $sfcCode = (Get-ScheduledTaskInfo -TaskName $sfcTaskName -ErrorAction SilentlyContinue).LastTaskResult
-            Update-UI "SFC termine" 90 "     -> SFC /scannow termine (code $sfcCode)." "Lime"
-            Add-Log "[OK] SFC /scannow effectue (code de sortie $sfcCode - log : $sfcLog)"
-            Unregister-ScheduledTask -TaskName $sfcTaskName -Confirm:$false -ErrorAction SilentlyContinue
-        }
-    } catch {
-        Update-UI "SFC ignore" 90 "     -> SFC n'a pas pu etre lance : $($_.Exception.Message)" "Yellow"
-        Add-Log "[!] SFC /scannow ignore [$($_.Exception.GetType().FullName)]: $($_.Exception.Message)"
-    }
-
-    Update-UI "Planification CHKDSK..." 92 "     -> CHKDSK /f /r planifie au prochain demarrage..." "Cyan"
-    try {
-        # Equivalent exact de "chkdsk C: /f /r" repondu "O" : Windows lit BootExecute au demarrage,
-        # lance autochk, puis remet lui-meme la valeur par defaut (une seule verification).
-        $smPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager"
-        $bootExec = @("autocheck autochk /r \??\C:", "autocheck autochk *")
-        Set-ItemProperty -Path $smPath -Name "BootExecute" -Value $bootExec -Type MultiString -Force -ErrorAction Stop
-        Update-UI "CHKDSK planifie" 93 "     -> CHKDSK planifie au prochain redemarrage." "Lime"
-        Add-Log "[OK] CHKDSK /f /r planifie au prochain redemarrage"
-    } catch {
-        Update-UI "CHKDSK ignore" 93 "     -> CHKDSK n'a pas pu etre planifie : $($_.Exception.Message)" "Yellow"
-        Add-Log "[!] CHKDSK non planifie [$($_.Exception.GetType().FullName)]: $($_.Exception.Message)"
-    }
-    # Nettoyage des anciennes taches CHKDSK creees par la version precedente (lancaient chkdsk a chaque demarrage)
-    Get-ScheduledTask -TaskName "SecureeTech_CHKDSK_*" -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 300
-
-    # ===========================================================
-    # 13. INSTALLATION DE VIGILANCE (anti-escroquerie)
-    # ===========================================================
-    Update-UI "Installation de Vigilance..." 94 "[13/13] Installation du logiciel Vigilance (anti-escroquerie)..." "Cyan"
+    Update-UI "Installation de Vigilance..." 94 "[12/12] Installation du logiciel Vigilance (anti-escroquerie)..." "Cyan"
     try {
         $vigilanceUrl = "https://raw.githubusercontent.com/secureetech/secureetech-tools-for-technicien/main/Vigilance.ps1"
         $vigilanceDir = $script:VigDossier
@@ -821,9 +761,7 @@ $form.Add_Shown({
     $script:rapport += "   Telemetrie Windows et suggestions publicitaires desactivees."
     $script:rapport += ""
     $script:rapport += "7. Sante du systeme"
-    $script:rapport += "   Registre Windows verifie et sauvegarde, verification complete des fichiers"
-    $script:rapport += "   systeme (SFC /scannow) effectuee via tache planifiee, verification du disque"
-    $script:rapport += "   (CHKDSK) planifiee au prochain redemarrage."
+    $script:rapport += "   Registre Windows verifie et sauvegarde."
     $script:rapport += ""
     $script:rapport += "=============================================="
     $script:rapport += " LOGICIELS SECUREETECH INSTALLES SUR CE POSTE"
@@ -854,7 +792,7 @@ $form.Add_Shown({
     $script:rapport += "=============================================="
     $script:rapport += " RECOMMANDATIONS"
     $script:rapport += "=============================================="
-    $script:rapport += "- Redemarrer le PC pour appliquer CHKDSK et la nouvelle memoire virtuelle"
+    $script:rapport += "- Redemarrer le PC pour appliquer la nouvelle memoire virtuelle"
     $script:rapport += "- Installer un antivirus a jour si ce n'est pas deja fait"
     $script:rapport += "- Verifier les prelevements bancaires lies a AnyTech365 si le client en a ete victime"
     $script:rapport += "- En cas de doute sur un appel ou un logiciel, contacter SecureeTech au 09 80 80 17 59"
