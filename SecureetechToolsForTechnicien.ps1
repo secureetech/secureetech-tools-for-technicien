@@ -48,7 +48,8 @@ $urls = @(
     "https://api.secureetech.com/v1/pdf/download",
     "https://api.secureetech.com/v1/recovery/download",
     "https://ublockorigin.com/fr",
-    "https://www.i-dont-care-about-cookies.eu/"
+    "https://www.i-dont-care-about-cookies.eu/",
+    "https://g.page/r/CRNFENGGcTDHEBM/review"
 )
 
 foreach ($url in $urls) {
