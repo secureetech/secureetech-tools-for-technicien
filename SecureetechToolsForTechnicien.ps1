@@ -40,55 +40,15 @@ Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName Microsoft.VisualBasic
 
 # ============================================================
-# INFOS CLIENT POUR VIGILANCE (demandees UNE SEULE FOIS, au debut)
-# Enregistrees dans config.json, dans le profil de l'utilisateur
-# connecte : Vigilance les relit a chaque demarrage du PC et ne les
-# redemande plus (modifiables ensuite par clic droit sur l'icone).
-# ============================================================
-$script:VigSessionUser = (Get-CimInstance Win32_ComputerSystem).UserName
-if (-not $script:VigSessionUser) { $script:VigSessionUser = "$env:USERDOMAIN\$env:USERNAME" }
-$script:VigDossier = Join-Path $env:LOCALAPPDATA "SecureeTech\Vigilance"
-try {
-    $vigSid = (New-Object System.Security.Principal.NTAccount($script:VigSessionUser)).Translate([System.Security.Principal.SecurityIdentifier]).Value
-    $vigProfil = (Get-CimInstance Win32_UserProfile -Filter "SID='$vigSid'" -ErrorAction Stop).LocalPath
-    if ($vigProfil) { $script:VigDossier = Join-Path $vigProfil "AppData\Local\SecureeTech\Vigilance" }
-} catch {}
-$vigConfig = Join-Path $script:VigDossier "config.json"
-$vigDejaConfigure = $false
-if (Test-Path $vigConfig) {
-    try {
-        $vigCfg = Get-Content $vigConfig -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($vigCfg.Nom) { $vigDejaConfigure = $true }
-    } catch {}
-}
-if (-not $vigDejaConfigure) {
-    $vigNom = [Microsoft.VisualBasic.Interaction]::InputBox(
-        'Nom du client (affiche sur le tableau de bord Vigilance) :',
-        'SecureeTech - Infos client', $env:COMPUTERNAME)
-    if (-not $vigNom) { $vigNom = $env:COMPUTERNAME }
-    $vigTel = [Microsoft.VisualBasic.Interaction]::InputBox(
-        'Telephone du client (optionnel) :',
-        'SecureeTech - Infos client', '')
-    try {
-        if (-not (Test-Path $script:VigDossier)) { New-Item -Path $script:VigDossier -ItemType Directory -Force | Out-Null }
-        ([pscustomobject]@{ Nom = $vigNom; Telephone = $vigTel } | ConvertTo-Json) | Set-Content -Path $vigConfig -Encoding UTF8
-    } catch {
-        Write-Host "Infos client non enregistrees : $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-}
-
-# ============================================================
 # OUVERTURE DES PAGES DE TELECHARGEMENT
 # ============================================================
 
 $urls = @(
-    "https://drive.google.com/file/d/18xnXvczofXCNfue6_lDdjvE9gBd6Igc-/view",
-    "https://www.iobit.com/fr/iobit-unlocker.php",
-    "https://anydesk.com/fr/downloads/thank-you?dv=win_exe",
-    "https://geekuninstaller.com/geek.zip",
+    "https://api.secureetech.com/v1/optipc/download",
+    "https://api.secureetech.com/v1/pdf/download",
+    "https://api.secureetech.com/v1/recovery/download",
     "https://ublockorigin.com/fr",
-    "https://www.i-dont-care-about-cookies.eu/",
-    "https://g.page/r/CRNFENGGcTDHEBM/review"
+    "https://www.i-dont-care-about-cookies.eu/"
 )
 
 foreach ($url in $urls) {
@@ -259,7 +219,7 @@ $form.Add_Shown({
     # ===========================================================
     # 1. POINT DE RESTAURATION
     # ===========================================================
-    Update-UI "Creation point de restauration..." 4 "[1/12] Point de restauration..." "Cyan"
+    Update-UI "Creation point de restauration..." 4 "[1/11] Point de restauration..." "Cyan"
     try {
         Enable-ComputerRestore -Drive "C:\" -ErrorAction SilentlyContinue
         # Windows ne cree qu'UN SEUL point de restauration automatique par 24h par defaut.
@@ -288,7 +248,7 @@ $form.Add_Shown({
     # 2. SUPPRESSION ANYTECH365 / PANORAMA9 / INTELLIGUARD / PANDA
     #    (version amelioree)
     # ===========================================================
-    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/12] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
+    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/11] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
 
     $keywords = @("AnyTech", "Panorama", "IntelliGuard", "Panda", "PSUA", "PSANHost", "AntiScam")
 
@@ -418,7 +378,7 @@ $form.Add_Shown({
     # ===========================================================
     # 3. BLOCAGE DOMAINES (anti-reinstallation)
     # ===========================================================
-    Update-UI "Blocage domaines..." 16 "[3/12] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
+    Update-UI "Blocage domaines..." 16 "[3/11] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
     $hostsPath = "C:\Windows\System32\drivers\etc\hosts"
     $hostsEntries = @(
         "127.0.0.1 anytech365.com",
@@ -449,7 +409,7 @@ $form.Add_Shown({
     # ===========================================================
     # 4. NETTOYAGE CACHES
     # ===========================================================
-    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/12] Nettoyage caches et fichiers temporaires..." "Cyan"
+    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/11] Nettoyage caches et fichiers temporaires..." "Cyan"
     $folders = @(
         $env:TEMP,
         $env:TMP,
@@ -480,7 +440,7 @@ $form.Add_Shown({
     # ===========================================================
     # 5. EFFETS VISUELS
     # ===========================================================
-    Update-UI "Effets visuels -> Performance..." 28 "[5/12] Effets visuels Windows -> Performance..." "Cyan"
+    Update-UI "Effets visuels -> Performance..." 28 "[5/11] Effets visuels Windows -> Performance..." "Cyan"
     $vePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
     if (!(Test-Path $vePath)) { New-Item $vePath -Force | Out-Null }
     Set-ItemProperty $vePath "VisualFXSetting" 2 -Force
@@ -492,7 +452,7 @@ $form.Add_Shown({
     # ===========================================================
     # 6. MODE ALIMENTATION
     # ===========================================================
-    Update-UI "Mode alimentation Haute Performance..." 33 "[6/12] Plan alimentation Haute Performance..." "Cyan"
+    Update-UI "Mode alimentation Haute Performance..." 33 "[6/11] Plan alimentation Haute Performance..." "Cyan"
     powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 2>$null
     Update-UI "Haute Performance OK" 35 "     -> Plan Haute Performance active." "Lime"
     Add-Log "[OK] Plan alimentation -> Haute Performance"
@@ -500,7 +460,7 @@ $form.Add_Shown({
     # ===========================================================
     # 7. RAM VIRTUELLE
     # ===========================================================
-    Update-UI "Configuration RAM virtuelle..." 37 "[7/12] RAM virtuelle..." "Cyan"
+    Update-UI "Configuration RAM virtuelle..." 37 "[7/11] RAM virtuelle..." "Cyan"
     $ramBytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
     $ramGB2 = [Math]::Round($ramBytes / 1GB)
     $initMB = $ramGB2 * 1024
@@ -528,7 +488,7 @@ $form.Add_Shown({
     # ===========================================================
     # 8. SERVICES INUTILES
     # ===========================================================
-    Update-UI "Desactivation services inutiles..." 42 "[8/12] Arret services telemetrie, Xbox, etc..." "Cyan"
+    Update-UI "Desactivation services inutiles..." 42 "[8/11] Arret services telemetrie, Xbox, etc..." "Cyan"
     $services = @(
         @{N="DiagTrack";D="Telemetrie Windows"},
         @{N="dmwappushservice";D="WAP Push"},
@@ -564,7 +524,7 @@ $form.Add_Shown({
     # ===========================================================
     # 9. DESACTIVATION DEMARRAGE
     # ===========================================================
-    Update-UI "Desactivation programmes au demarrage..." 52 "[9/12] Desactivation programmes demarrage auto..." "Cyan"
+    Update-UI "Desactivation programmes au demarrage..." 52 "[9/11] Desactivation programmes demarrage auto..." "Cyan"
     $startupKeys = @(
         "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
@@ -593,7 +553,7 @@ $form.Add_Shown({
     # ===========================================================
     # 10. TELEMETRIE REGISTRE
     # ===========================================================
-    Update-UI "Desactivation telemetrie..." 58 "[10/12] Telemetrie et pub Windows desactivees..." "Cyan"
+    Update-UI "Desactivation telemetrie..." 58 "[10/11] Telemetrie et pub Windows desactivees..." "Cyan"
     $keys = @(
         @{P="HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection";N="AllowTelemetry";V=0},
         @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection";N="AllowTelemetry";V=0},
@@ -616,7 +576,7 @@ $form.Add_Shown({
     # ===========================================================
     # 11. REPARATION REGISTRE
     # ===========================================================
-    Update-UI "Reparation du registre..." 64 "[11/12] Reparation registre Windows..." "Cyan"
+    Update-UI "Reparation du registre..." 64 "[11/11] Reparation registre Windows..." "Cyan"
     # Execution directe (sans Start-Job) : Start-Job demarre un processus PowerShell
     # separe qui peut se voir refuser l'acces par l'antivirus ou perdre les droits admin
     # (c'est la cause des erreurs "Acces refuse" / PSRemotingTransportException observees).
@@ -656,40 +616,6 @@ $form.Add_Shown({
     }
     Update-UI "Registre repare" 72 "     -> Registre nettoye et sauvegarde dans $env:TEMP." "Lime"
     Add-Log "[OK] Registre Windows repare"
-    Start-Sleep -Milliseconds 300
-
-    # ===========================================================
-    # 12. INSTALLATION DE VIGILANCE (anti-escroquerie)
-    # ===========================================================
-    Update-UI "Installation de Vigilance..." 94 "[12/12] Installation du logiciel Vigilance (anti-escroquerie)..." "Cyan"
-    try {
-        $vigilanceUrl = "https://raw.githubusercontent.com/secureetech/secureetech-tools-for-technicien/main/Vigilance.ps1"
-        $vigilanceDir = $script:VigDossier
-        if (-not (Test-Path $vigilanceDir)) { New-Item -Path $vigilanceDir -ItemType Directory -Force | Out-Null }
-        $vigilancePath = Join-Path $vigilanceDir "Vigilance.ps1"
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -Uri $vigilanceUrl -OutFile $vigilancePath -UseBasicParsing -ErrorAction Stop
-
-        # Tache "a chaque ouverture de session", dans la session de l'utilisateur connecte
-        $vigilanceArgs = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$vigilancePath`""
-        $sessionUser = $script:VigSessionUser
-        Unregister-ScheduledTask -TaskName "SecureeTech Vigilance" -Confirm:$false -ErrorAction SilentlyContinue
-        $action    = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $vigilanceArgs
-        $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $sessionUser
-        $principal = New-ScheduledTaskPrincipal -UserId $sessionUser -LogonType Interactive -RunLevel Limited
-        $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
-        Register-ScheduledTask -TaskName "SecureeTech Vigilance" -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force -ErrorAction Stop | Out-Null
-        Add-Log "[OK] Vigilance programme pour demarrer a chaque ouverture de session ($sessionUser)"
-
-        # Demarrage immediat : c'est le Planificateur qui lance Vigilance (pas de Start-Process)
-        Start-ScheduledTask -TaskName "SecureeTech Vigilance" -ErrorAction Stop
-        Start-Sleep -Seconds 2
-        Update-UI "Vigilance installe" 95 "     -> Vigilance installe et actif (surveillance en cours)." "Lime"
-        Add-Log "[OK] Vigilance installe dans $vigilanceDir et demarre"
-    } catch {
-        Update-UI "Vigilance ignore" 95 "     -> Installation de Vigilance impossible : $($_.Exception.Message)" "Yellow"
-        Add-Log "[!] Installation de Vigilance echouee [$($_.Exception.GetType().FullName)]: $($_.Exception.Message)"
-    }
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
@@ -765,28 +691,25 @@ $form.Add_Shown({
     $script:rapport += "   Registre Windows verifie et sauvegarde."
     $script:rapport += ""
     $script:rapport += "=============================================="
-    $script:rapport += " LOGICIELS SECUREETECH INSTALLES SUR CE POSTE"
+    $script:rapport += " LOGICIELS SECUREETECH (telechargements ouverts)"
     $script:rapport += "=============================================="
     $script:rapport += ""
     $script:rapport += "> OptiPC (SecureeTech)"
-    $script:rapport += "  Notre logiciel d'optimisation OptiPC a ete installe sur ce poste. Il assure"
-    $script:rapport += "  desormais l'entretien regulier de l'ordinateur (nettoyage, surveillance des"
-    $script:rapport += "  performances) de maniere autonome, en complement de cette intervention."
-    $script:rapport += "  Telechargement officiel :"
-    $script:rapport += "  https://github.com/secureetech/optipc/releases/download/v1.0.0/OptiPC-Setup-1.0.0.exe"
+    $script:rapport += "  Logiciel d'optimisation : entretien regulier de l'ordinateur (nettoyage,"
+    $script:rapport += "  surveillance des performances), en complement de cette intervention."
+    $script:rapport += "  https://api.secureetech.com/v1/optipc/download"
     $script:rapport += ""
-    $script:rapport += "> Vigilance (SecureeTech)"
-    $script:rapport += "  Notre logiciel de vigilance anti-escroquerie a ete installe sur ce poste."
-    $script:rapport += "  Il surveille l'ordinateur en permanence et alerte immediatement en cas"
-    $script:rapport += "  d'ouverture d'un outil de prise en main a distance non reconnu, afin de"
-    $script:rapport += "  proteger le client contre les arnaques au faux support technique."
+    $script:rapport += "> SecureeTech PDF"
+    $script:rapport += "  Lecture et modification de documents PDF."
+    $script:rapport += "  https://api.secureetech.com/v1/pdf/download"
+    $script:rapport += ""
+    $script:rapport += "> SecureeTech Recovery"
+    $script:rapport += "  Recuperation de fichiers supprimes ou perdus."
+    $script:rapport += "  https://api.secureetech.com/v1/recovery/download"
     $script:rapport += ""
     $script:rapport += "=============================================="
-    $script:rapport += " LOGICIELS RECOMMANDES (telechargements ouverts)"
+    $script:rapport += " EXTENSIONS NAVIGATEUR RECOMMANDEES"
     $script:rapport += "=============================================="
-    $script:rapport += "- IObit Unlocker            : deverrouillage de fichiers bloques"
-    $script:rapport += "- AnyDesk                   : prise en main a distance pour le support SecureeTech"
-    $script:rapport += "- Geek Uninstaller          : desinstallation propre de logiciels"
     $script:rapport += "- uBlock Origin             : bloqueur de publicites navigateur"
     $script:rapport += "- I Dont Care About Cookies : suppression des bandeaux de cookies"
     $script:rapport += ""
