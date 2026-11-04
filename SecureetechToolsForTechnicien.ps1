@@ -52,15 +52,20 @@ $urls = @(
     "https://g.page/r/CRNFENGGcTDHEBM/review"
 )
 
-foreach ($url in $urls) {
-    Start-Process $url
-    Start-Sleep -Milliseconds 600
+# Mode automatique (ST_AUTO=1, lance par le bouton « Nettoyer » du dashboard) :
+# pas d'onglets ni de nettoyage de disque ici (le nettoyage automatique s'en charge),
+# et la fenetre se ferme toute seule a la fin.
+$AutoMode = ($env:ST_AUTO -eq '1')
+if (-not $AutoMode) {
+    foreach ($url in $urls) {
+        Start-Process $url
+        Start-Sleep -Milliseconds 600
+    }
+    # Ouvre l'utilitaire de nettoyage de disque Windows (cleanmgr) en parallele
+    try {
+        Start-Process "cleanmgr.exe" -ErrorAction SilentlyContinue
+    } catch {}
 }
-
-# Ouvre l'utilitaire de nettoyage de disque Windows (cleanmgr) en parallele
-try {
-    Start-Process "cleanmgr.exe" -ErrorAction SilentlyContinue
-} catch {}
 
 # ============================================================
 # INTERFACE GRAPHIQUE
@@ -730,6 +735,11 @@ $form.Add_Shown({
     $desktop = [Environment]::GetFolderPath("Desktop")
     $path = "$desktop\Rapport_SecureeTech_Technicien_$(Get-Date -Format 'dd-MM-yyyy_HHmm').txt"
     $script:rapport | Out-File -FilePath $path -Encoding UTF8 -Force
+    if ($AutoMode) {
+        $dAuto = Join-Path $env:ProgramData 'SecureeTech\Nettoyage'
+        New-Item -ItemType Directory -Force $dAuto | Out-Null
+        $script:rapport | Out-File -FilePath (Join-Path $dAuto ([IO.Path]::GetFileName($path))) -Encoding UTF8 -Force
+    }
     Update-UI "Rapport sauvegarde !" 98 "     -> Rapport sur le Bureau : $path" "Lime"
     Start-Sleep -Milliseconds 500
 
@@ -745,6 +755,8 @@ $form.Add_Shown({
     $btnClose.BringToFront()
     $form.Refresh()
     # La fenetre NE se ferme JAMAIS toute seule : elle attend explicitement le clic sur "Fermer".
+    # (sauf en mode automatique, ou personne n'est la pour cliquer)
+    if ($AutoMode) { Start-Sleep -Seconds 3; $form.Close() }
 })
 
 # ShowDialog() bloque tant que l'utilisateur n'a pas clique sur "Fermer" : la fenetre
@@ -754,9 +766,11 @@ $form.ShowDialog() | Out-Null
 # Si le script a ete lance depuis un raccourci qui fermerait la console PowerShell
 # immediatement apres la fin du script, on garde cette fenetre ouverte pour que le
 # technicien puisse relire le resultat.
-Write-Host ""
-Write-Host "==============================================" -ForegroundColor Green
-Write-Host "  Optimisation SecureeTech terminee." -ForegroundColor Green
-Write-Host "  Le rapport complet a ete enregistre sur le Bureau." -ForegroundColor Green
-Write-Host "==============================================" -ForegroundColor Green
-Read-Host "Appuyez sur Entree pour fermer cette fenetre PowerShell"
+if (-not $AutoMode) {
+    Write-Host ""
+    Write-Host "==============================================" -ForegroundColor Green
+    Write-Host "  Optimisation SecureeTech terminee." -ForegroundColor Green
+    Write-Host "  Le rapport complet a ete enregistre sur le Bureau." -ForegroundColor Green
+    Write-Host "==============================================" -ForegroundColor Green
+    Read-Host "Appuyez sur Entree pour fermer cette fenetre PowerShell"
+}
