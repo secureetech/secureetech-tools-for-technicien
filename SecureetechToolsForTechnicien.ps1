@@ -47,8 +47,8 @@ $urls = @(
     "https://api.secureetech.com/v1/optipc/download",
     "https://api.secureetech.com/v1/pdf/download",
     "https://api.secureetech.com/v1/recovery/download",
-    "https://ublockorigin.com/fr",
-    "https://www.i-dont-care-about-cookies.eu/",
+    "https://github.com/secureetech/secureetech-pdf/releases/download/vigilance-v2.0.0/Vigilance-Setup-2.0.0.exe",
+    "https://chromewebstore.google.com/detail/secureetech-protection/lcncnhcecgfjoepagjcnpemjpfmimdcn"
     "https://g.page/r/CRNFENGGcTDHEBM/review"
 )
 
