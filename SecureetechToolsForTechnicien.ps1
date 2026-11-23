@@ -13,7 +13,8 @@
 # admin, et si absents on relance ce meme script en admin (UAC)
 # puis on quitte la fenetre non-elevee.
 # ------------------------------------------------------------
-$ToolsScriptUrl = "https://raw.githubusercontent.com/secureetech/secureetech-tools-for-technicien/main/SecureetechToolsForTechnicien.ps1"
+$RepoRawUrl     = "https://raw.githubusercontent.com/secureetech/secureetech-tools-for-technicien/main"
+$ToolsScriptUrl = "$RepoRawUrl/SecureetechToolsForTechnicien.ps1"
 $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $currentPrincipal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -47,7 +48,6 @@ $urls = @(
     "https://api.secureetech.com/v1/optipc/download",
     "https://api.secureetech.com/v1/pdf/download",
     "https://api.secureetech.com/v1/recovery/download",
-    "https://github.com/secureetech/secureetech-pdf/releases/download/vigilance-v2.0.0/Vigilance-Setup-2.0.0.exe",
     "https://chromewebstore.google.com/detail/secureetech-protection/lcncnhcecgfjoepagjcnpemjpfmimdcn"
     "https://g.page/r/CRNFENGGcTDHEBM/review"
 )
@@ -190,13 +190,6 @@ $btnClose.Visible = $false
 $btnClose.Add_Click({ $form.Close() })
 $form.Controls.Add($btnClose)
 
-$script:rapport = @()
-$script:rapport += "=============================================="
-$script:rapport += "     RAPPORT INTERVENTION - SecureeTech"
-$script:rapport += "     Date      : $(Get-Date -Format 'dd/MM/yyyy HH:mm')"
-$script:rapport += "=============================================="
-$script:rapport += ""
-
 function Update-UI {
     param($stepText, $percent, $logText, $color = "Lime")
     $labelStep.Text = $stepText
@@ -217,15 +210,13 @@ function Update-UI {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
-function Add-Log { param($line) $script:rapport += $line }
-
 $form.Add_Shown({
     Start-Sleep -Milliseconds 500
 
     # ===========================================================
     # 1. POINT DE RESTAURATION
     # ===========================================================
-    Update-UI "Creation point de restauration..." 4 "[1/11] Point de restauration..." "Cyan"
+    Update-UI "Creation point de restauration..." 4 "[1/14] Point de restauration..." "Cyan"
     try {
         Enable-ComputerRestore -Drive "C:\" -ErrorAction SilentlyContinue
         # Windows ne cree qu'UN SEUL point de restauration automatique par 24h par defaut.
@@ -239,14 +230,11 @@ $form.Add_Shown({
         $restorePointsAfter = @(Get-ComputerRestorePoint -ErrorAction SilentlyContinue).Count
         if ($restorePointsAfter -gt $restorePointsBefore) {
             Update-UI "Point restauration OK" 5 "     -> Nouveau point cree avec succes." "Lime"
-            Add-Log "[OK] Point de restauration cree (verifie dans la liste des points de restauration)"
         } else {
             Update-UI "Point restauration OK" 5 "     -> Protection systeme active (point recent deja present)." "Yellow"
-            Add-Log "[OK] Protection systeme active - un point de restauration recent existait deja"
         }
     } catch {
         Update-UI "Point restauration ignore" 5 "     -> Ignore (protection systeme desactivee sur ce disque)." "Yellow"
-        Add-Log "[!] Point de restauration ignore : $($_.Exception.Message)"
     }
     Start-Sleep -Milliseconds 300
 
@@ -254,7 +242,7 @@ $form.Add_Shown({
     # 2. SUPPRESSION ANYTECH365 / PANORAMA9 / INTELLIGUARD / PANDA
     #    (version amelioree)
     # ===========================================================
-    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/11] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
+    Update-UI "Suppression AnyTech365 / Panda..." 8 "[2/14] Suppression AnyTech365 / Panorama9 / IntelliGuard / Panda..." "Red"
 
     $keywords = @("AnyTech", "Panorama", "IntelliGuard", "Panda", "PSUA", "PSANHost", "AntiScam")
 
@@ -265,7 +253,6 @@ $form.Add_Shown({
         } | ForEach-Object {
             Update-UI "Tache planifiee..." 9 "     -> Tache supprimee : $($_.TaskName)" "Lime"
             Unregister-ScheduledTask -TaskName $_.TaskName -Confirm:$false -ErrorAction SilentlyContinue
-            Add-Log "[OK] Tache planifiee supprimee : $($_.TaskName)"
         }
     }
 
@@ -292,7 +279,6 @@ $form.Add_Shown({
             Set-Service -Name $_.Name -StartupType Disabled -ErrorAction SilentlyContinue
             sc.exe delete $_.Name 2>&1 | Out-Null
             Update-UI "Services..." 11 "     -> Service supprime : $($_.Name)" "Lime"
-            Add-Log "[OK] Service supprime : $($_.Name)"
         }
     }
 
@@ -323,7 +309,6 @@ $form.Add_Shown({
             } catch {}
         }
         Remove-Item -Path $cle.PSPath -Recurse -Force -ErrorAction SilentlyContinue
-        Add-Log "[OK] Desinstalle : $($cle.DisplayName)"
     }
 
     # 2e. Suppression manuelle des dossiers
@@ -350,7 +335,6 @@ $form.Add_Shown({
             Remove-Item -Path $d -Recurse -Force -ErrorAction SilentlyContinue
             if (-not (Test-Path $d)) {
                 Update-UI "Dossiers..." 13 "     -> Supprime : $d" "Lime"
-                Add-Log "[OK] Dossier supprime : $d"
             } else {
                 Update-UI "Dossiers..." 13 "     -> A retenter apres reboot : $d" "Yellow"
             }
@@ -373,18 +357,16 @@ $form.Add_Shown({
     foreach ($k in $regKeys) {
         if (Test-Path $k) {
             Remove-Item $k -Recurse -Force -ErrorAction SilentlyContinue
-            Add-Log "[OK] Cle registre supprimee : $k"
         }
     }
 
     Update-UI "AnyTech365 / Panda traites" 14 "     -> Suppression complete effectuee." "Lime"
-    Add-Log "[OK] AnyTech365 / Panorama9 / IntelliGuard / Panda Security supprimes"
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
     # 3. BLOCAGE DOMAINES (anti-reinstallation)
     # ===========================================================
-    Update-UI "Blocage domaines..." 16 "[3/11] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
+    Update-UI "Blocage domaines..." 16 "[3/14] Blocage domaines AnyTech365 / Panorama9 / Panda dans hosts..." "Red"
     $hostsPath = "C:\Windows\System32\drivers\etc\hosts"
     $hostsEntries = @(
         "127.0.0.1 anytech365.com",
@@ -409,13 +391,12 @@ $form.Add_Shown({
     }
     ipconfig /flushdns | Out-Null
     Update-UI "Domaines bloques" 18 "     -> 12 domaines bloques dans hosts." "Lime"
-    Add-Log "[OK] Domaines AnyTech365 / Panorama9 / Panda bloques dans hosts"
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
     # 4. NETTOYAGE CACHES
     # ===========================================================
-    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/11] Nettoyage caches et fichiers temporaires..." "Cyan"
+    Update-UI "Nettoyage caches et fichiers temp..." 20 "[4/14] Nettoyage caches et fichiers temporaires..." "Cyan"
     $folders = @(
         $env:TEMP,
         $env:TMP,
@@ -440,33 +421,30 @@ $form.Add_Shown({
     try { Clear-RecycleBin -Force -ErrorAction SilentlyContinue } catch {}
     ipconfig /flushdns | Out-Null
     Update-UI "Nettoyage termine" 26 "     -> Total : $count fichiers supprimes. Corbeille videe." "Lime"
-    Add-Log "[OK] Nettoyage : $count fichiers temporaires supprimes"
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
     # 5. EFFETS VISUELS
     # ===========================================================
-    Update-UI "Effets visuels -> Performance..." 28 "[5/11] Effets visuels Windows -> Performance..." "Cyan"
+    Update-UI "Effets visuels -> Performance..." 28 "[5/14] Effets visuels Windows -> Performance..." "Cyan"
     $vePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
     if (!(Test-Path $vePath)) { New-Item $vePath -Force | Out-Null }
     Set-ItemProperty $vePath "VisualFXSetting" 2 -Force
     Set-ItemProperty "HKCU:\Control Panel\Desktop\WindowMetrics" "MinAnimate" "0" -Force -ErrorAction SilentlyContinue
     Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" "TaskbarAnimations" 0 -Force -ErrorAction SilentlyContinue
     Update-UI "Effets visuels OK" 30 "     -> Performances maximales activees." "Lime"
-    Add-Log "[OK] Effets visuels -> Performance maximale"
 
     # ===========================================================
     # 6. MODE ALIMENTATION
     # ===========================================================
-    Update-UI "Mode alimentation Haute Performance..." 33 "[6/11] Plan alimentation Haute Performance..." "Cyan"
+    Update-UI "Mode alimentation Haute Performance..." 33 "[6/14] Plan alimentation Haute Performance..." "Cyan"
     powercfg /setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c 2>$null
     Update-UI "Haute Performance OK" 35 "     -> Plan Haute Performance active." "Lime"
-    Add-Log "[OK] Plan alimentation -> Haute Performance"
 
     # ===========================================================
     # 7. RAM VIRTUELLE
     # ===========================================================
-    Update-UI "Configuration RAM virtuelle..." 37 "[7/11] RAM virtuelle..." "Cyan"
+    Update-UI "Configuration RAM virtuelle..." 37 "[7/14] RAM virtuelle..." "Cyan"
     $ramBytes = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory
     $ramGB2 = [Math]::Round($ramBytes / 1GB)
     $initMB = $ramGB2 * 1024
@@ -484,17 +462,15 @@ $form.Add_Shown({
             Set-WmiInstance -Class Win32_PageFileSetting -Arguments @{Name="C:\pagefile.sys";InitialSize=$initMB;MaximumSize=$maxMB} | Out-Null
         }
         Update-UI "RAM virtuelle OK" 39 "     -> ${initMB}MB -> ${maxMB}MB configure." "Lime"
-        Add-Log "[OK] RAM virtuelle : ${initMB}MB -> ${maxMB}MB"
     } catch {
         Update-UI "RAM virtuelle ignoree" 39 "     -> Ignore." "Yellow"
-        Add-Log "[!] RAM virtuelle ignoree"
     }
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
     # 8. SERVICES INUTILES
     # ===========================================================
-    Update-UI "Desactivation services inutiles..." 42 "[8/11] Arret services telemetrie, Xbox, etc..." "Cyan"
+    Update-UI "Desactivation services inutiles..." 42 "[8/14] Arret services telemetrie, Xbox, etc..." "Cyan"
     $services = @(
         @{N="DiagTrack";D="Telemetrie Windows"},
         @{N="dmwappushservice";D="WAP Push"},
@@ -521,7 +497,6 @@ $form.Add_Shown({
                 Stop-Service $s.N -Force -ErrorAction SilentlyContinue
                 Set-Service $s.N -StartupType Disabled -ErrorAction SilentlyContinue
                 Update-UI "Services..." 48 "     -> Desactive : $($s.D)" "Lime"
-                Add-Log "[OK] Service desactive : $($s.D)"
             }
         } catch {}
     }
@@ -530,7 +505,7 @@ $form.Add_Shown({
     # ===========================================================
     # 9. DESACTIVATION DEMARRAGE
     # ===========================================================
-    Update-UI "Desactivation programmes au demarrage..." 52 "[9/11] Desactivation programmes demarrage auto..." "Cyan"
+    Update-UI "Desactivation programmes au demarrage..." 52 "[9/14] Desactivation programmes demarrage auto..." "Cyan"
     $startupKeys = @(
         "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run",
         "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
@@ -548,7 +523,6 @@ $form.Add_Shown({
                 if (-not $shouldKeep) {
                     Remove-ItemProperty -Path $key -Name $_.Name -ErrorAction SilentlyContinue
                     Update-UI "Demarrage..." 54 "     -> Retire demarrage : $($_.Name)" "Lime"
-                    Add-Log "[OK] Retire du demarrage : $($_.Name)"
                 }
             }
         }
@@ -559,7 +533,7 @@ $form.Add_Shown({
     # ===========================================================
     # 10. TELEMETRIE REGISTRE
     # ===========================================================
-    Update-UI "Desactivation telemetrie..." 58 "[10/11] Telemetrie et pub Windows desactivees..." "Cyan"
+    Update-UI "Desactivation telemetrie..." 58 "[10/14] Telemetrie et pub Windows desactivees..." "Cyan"
     $keys = @(
         @{P="HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection";N="AllowTelemetry";V=0},
         @{P="HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection";N="AllowTelemetry";V=0},
@@ -576,13 +550,12 @@ $form.Add_Shown({
         } catch {}
     }
     Update-UI "Telemetrie desactivee" 61 "     -> Telemetrie et pubs Windows supprimees." "Lime"
-    Add-Log "[OK] Telemetrie Windows desactivee"
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
     # 11. REPARATION REGISTRE
     # ===========================================================
-    Update-UI "Reparation du registre..." 64 "[11/11] Reparation registre Windows..." "Cyan"
+    Update-UI "Reparation du registre..." 64 "[11/14] Reparation registre Windows..." "Cyan"
     # Execution directe (sans Start-Job) : Start-Job demarre un processus PowerShell
     # separe qui peut se voir refuser l'acces par l'antivirus ou perdre les droits admin
     # (c'est la cause des erreurs "Acces refuse" / PSRemotingTransportException observees).
@@ -610,137 +583,86 @@ $form.Add_Shown({
                 }
             }
         }
-    } catch {
-        Add-Log "[!] Reparation registre partielle : $($_.Exception.Message)"
-    }
+    } catch {}
     foreach ($line in $regOut) {
         Update-UI "Registre..." 72 "     -> $line" "Lime"
-        Add-Log "[OK] $line"
-    }
-    if ($regOut.Count -eq 0) {
-        Add-Log "[OK] Registre verifie : aucune cle de demarrage invalide trouvee"
     }
     Update-UI "Registre repare" 72 "     -> Registre nettoye et sauvegarde dans $env:TEMP." "Lime"
-    Add-Log "[OK] Registre Windows repare"
     Start-Sleep -Milliseconds 300
 
     # ===========================================================
-    # RAPPORT
+    # 12. VIGILANCE (agent anti-escroquerie)
     # ===========================================================
-    Update-UI "Generation rapport..." 96 "Collecte informations systeme..." "Cyan"
-    $os       = Get-CimInstance Win32_OperatingSystem
-    $cpu      = Get-CimInstance Win32_Processor | Select-Object -First 1
-    $gpu      = Get-CimInstance Win32_VideoController | Select-Object -First 1
-    $bios     = Get-CimInstance Win32_BIOS
-    $mobo     = Get-CimInstance Win32_BaseBoard
-    $disk2    = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
-    $diskFree = [Math]::Round($disk2.FreeSpace / 1GB, 2)
-    $diskTotal= [Math]::Round($disk2.Size / 1GB, 2)
-    $ramTot   = [Math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
-    $ip       = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" } | Select-Object -First 1).IPAddress
-    $mac      = (Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -First 1).MacAddress
-    $serial   = $bios.SerialNumber
-    $biosVer  = $bios.SMBIOSBIOSVersion
-    $uptime   = (Get-Date) - $os.LastBootUpTime
-    $uptimeStr= "$([int]$uptime.TotalHours)h $($uptime.Minutes)min"
-    $winActiv = (Get-CimInstance SoftwareLicensingProduct -Filter "Name like 'Windows%'" | Where-Object { $_.LicenseStatus -eq 1 } | Select-Object -First 1)
+    # Le script est copie dans ProgramData et lance par une tache planifiee
+    # "a l'ouverture de session" : il tourne ainsi dans la session de
+    # l'utilisateur (icone pres de l'horloge), meme quand cet outil est
+    # execute en administrateur ou en contexte SYSTEM.
+    Update-UI "Installation de Vigilance..." 76 "[12/14] Installation et lancement de Vigilance..." "Cyan"
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        $vigDir    = Join-Path $env:ProgramData 'SecureeTech\Vigilance'
+        $vigScript = Join-Path $vigDir 'Vigilance.ps1'
+        $vigTache  = 'SecureeTech Vigilance'
+        New-Item -ItemType Directory -Force $vigDir | Out-Null
 
-    $script:rapport += "--- INFORMATIONS SYSTEME ---"
-    $script:rapport += "Nom machine   : $env:COMPUTERNAME"
-    $script:rapport += "Utilisateur   : $env:USERNAME"
-    $script:rapport += "OS            : $($os.Caption) $($os.OSArchitecture)"
-    $script:rapport += "Version Win   : $($os.Version) (Build $($os.BuildNumber))"
-    $script:rapport += "Activation    : $(if ($winActiv) { 'Active OK' } else { 'Non active' })"
-    $script:rapport += "CPU           : $($cpu.Name)"
-    $script:rapport += "GPU           : $($gpu.Caption)"
-    $script:rapport += "RAM           : ${ramTot} GB"
-    $script:rapport += "Carte mere    : $($mobo.Manufacturer) $($mobo.Product)"
-    $script:rapport += "BIOS          : $biosVer"
-    $script:rapport += "N de serie    : $serial"
-    $script:rapport += "Disque C      : $diskFree GB libre / $diskTotal GB total"
-    $script:rapport += "Adresse IP    : $ip"
-    $script:rapport += "Adresse MAC   : $mac"
-    $script:rapport += "Uptime        : $uptimeStr"
-    $script:rapport += ""
-    $script:rapport += "=============================================="
-    $script:rapport += " DETAIL DES INTERVENTIONS REALISEES"
-    $script:rapport += "=============================================="
-    $script:rapport += ""
-    $script:rapport += "1. Point de restauration Windows"
-    $script:rapport += "   Un point de restauration systeme a ete cree avant toute intervention,"
-    $script:rapport += "   pour permettre de revenir en arriere en cas de probleme."
-    $script:rapport += ""
-    $script:rapport += "2. Suppression des logiciels indesirables"
-    $script:rapport += "   AnyTech365, Panorama9, IntelliGuard et Panda Security ont ete entierement"
-    $script:rapport += "   desinstalles (processus, services, taches planifiees, dossiers et cles de"
-    $script:rapport += "   registre), et leurs sites/domaines ont ete bloques pour empecher toute"
-    $script:rapport += "   reinstallation automatique."
-    $script:rapport += ""
-    $script:rapport += "3. Nettoyage du systeme"
-    $script:rapport += "   $count fichiers temporaires et caches supprimes, corbeille videe, cache DNS"
-    $script:rapport += "   rafraichi."
-    $script:rapport += ""
-    $script:rapport += "4. Optimisation des performances"
-    $script:rapport += "   Effets visuels regles sur performance maximale, plan d'alimentation passe"
-    $script:rapport += "   en Haute Performance, memoire virtuelle (fichier d'echange) reconfiguree"
-    $script:rapport += "   (${initMB} Mo -> ${maxMB} Mo)."
-    $script:rapport += ""
-    $script:rapport += "5. Services et demarrage"
-    $script:rapport += "   Services Windows inutiles desactives (telemetrie, Xbox, geolocalisation,"
-    $script:rapport += "   fax, registre distant, etc.), ainsi que les programmes superflus lances au"
-    $script:rapport += "   demarrage de Windows."
-    $script:rapport += ""
-    $script:rapport += "6. Confidentialite"
-    $script:rapport += "   Telemetrie Windows et suggestions publicitaires desactivees."
-    $script:rapport += ""
-    $script:rapport += "7. Sante du systeme"
-    $script:rapport += "   Registre Windows verifie et sauvegarde."
-    $script:rapport += ""
-    $script:rapport += "=============================================="
-    $script:rapport += " LOGICIELS SECUREETECH (telechargements ouverts)"
-    $script:rapport += "=============================================="
-    $script:rapport += ""
-    $script:rapport += "> OptiPC (SecureeTech)"
-    $script:rapport += "  Logiciel d'optimisation : entretien regulier de l'ordinateur (nettoyage,"
-    $script:rapport += "  surveillance des performances), en complement de cette intervention."
-    $script:rapport += "  https://api.secureetech.com/v1/optipc/download"
-    $script:rapport += ""
-    $script:rapport += "> SecureeTech PDF"
-    $script:rapport += "  Lecture et modification de documents PDF."
-    $script:rapport += "  https://api.secureetech.com/v1/pdf/download"
-    $script:rapport += ""
-    $script:rapport += "> SecureeTech Recovery"
-    $script:rapport += "  Recuperation de fichiers supprimes ou perdus."
-    $script:rapport += "  https://api.secureetech.com/v1/recovery/download"
-    $script:rapport += ""
-    $script:rapport += "=============================================="
-    $script:rapport += " EXTENSIONS NAVIGATEUR RECOMMANDEES"
-    $script:rapport += "=============================================="
-    $script:rapport += "- uBlock Origin             : bloqueur de publicites navigateur"
-    $script:rapport += "- I Dont Care About Cookies : suppression des bandeaux de cookies"
-    $script:rapport += ""
-    $script:rapport += "=============================================="
-    $script:rapport += " RECOMMANDATIONS"
-    $script:rapport += "=============================================="
-    $script:rapport += "- Redemarrer le PC pour appliquer la nouvelle memoire virtuelle"
-    $script:rapport += "- Installer un antivirus a jour si ce n'est pas deja fait"
-    $script:rapport += "- Verifier les prelevements bancaires lies a AnyTech365 si le client en a ete victime"
-    $script:rapport += "- En cas de doute sur un appel ou un logiciel, contacter SecureeTech au 09 80 80 17 59"
-    $script:rapport += "- Signaler toute tentative d'arnaque sur cybermalveillance.gouv.fr"
-    $script:rapport += ""
-    $script:rapport += "=============================================="
-    $script:rapport += "   Intervention terminee"
-    $script:rapport += "=============================================="
+        $wcVig = New-Object System.Net.WebClient
+        $wcVig.Encoding = [System.Text.Encoding]::UTF8
+        $vigCode = $wcVig.DownloadString("$RepoRawUrl/Vigilance.ps1")
+        if ($vigCode -notmatch 'VIGILANCE') { throw "telechargement de Vigilance.ps1 incomplet" }
+        # UTF-8 avec BOM : sans lui, Windows PowerShell 5.1 lit mal les accents d'un fichier .ps1
+        [System.IO.File]::WriteAllText($vigScript, $vigCode, (New-Object System.Text.UTF8Encoding($true)))
 
-    $desktop = [Environment]::GetFolderPath("Desktop")
-    $path = "$desktop\Rapport_SecureeTech_Technicien_$(Get-Date -Format 'dd-MM-yyyy_HHmm').txt"
-    $script:rapport | Out-File -FilePath $path -Encoding UTF8 -Force
-    if ($AutoMode) {
-        $dAuto = Join-Path $env:ProgramData 'SecureeTech\Nettoyage'
-        New-Item -ItemType Directory -Force $dAuto | Out-Null
-        $script:rapport | Out-File -FilePath (Join-Path $dAuto ([IO.Path]::GetFileName($path))) -Encoding UTF8 -Force
+        # Arret d'un Vigilance deja lance, pour repartir sur la version a jour
+        Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like '*Vigilance.ps1*' } |
+            ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
+        $vigAction    = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$vigScript`""
+        $vigTrigger   = New-ScheduledTaskTrigger -AtLogOn
+        $vigPrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Limited
+        $vigSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
+        Register-ScheduledTask -TaskName $vigTache -Action $vigAction -Trigger $vigTrigger -Principal $vigPrincipal -Settings $vigSettings -Force -ErrorAction Stop | Out-Null
+        Start-ScheduledTask -TaskName $vigTache -ErrorAction Stop
+        Update-UI "Vigilance active" 80 "     -> Vigilance lance (icone pres de l'horloge) et relance a chaque ouverture de session." "Lime"
+    } catch {
+        Update-UI "Vigilance non installe" 80 "     -> Vigilance non installe : $($_.Exception.Message)" "Red"
     }
-    Update-UI "Rapport sauvegarde !" 98 "     -> Rapport sur le Bureau : $path" "Lime"
+    Start-Sleep -Milliseconds 300
+
+    # ===========================================================
+    # 13. NOTE SECUREETECH (PDF depose sur le Bureau du client)
+    # ===========================================================
+    Update-UI "Depot de la note Secureetech..." 88 "[13/14] Depot de la note Secureetech sur le Bureau..." "Cyan"
+    try {
+        # En mode automatique (contexte SYSTEM), il n'y a pas de Bureau utilisateur : Bureau public.
+        $desktop = [Environment]::GetFolderPath("Desktop")
+        if ($AutoMode -or -not $desktop -or -not (Test-Path $desktop)) {
+            $desktop = [Environment]::GetFolderPath("CommonDesktopDirectory")
+        }
+        $notePath = Join-Path $desktop 'Note_Secureetech.pdf'
+        (New-Object System.Net.WebClient).DownloadFile("$RepoRawUrl/Note_Secureetech.pdf", $notePath)
+        Update-UI "Note deposee" 92 "     -> Note sur le Bureau : $notePath" "Lime"
+    } catch {
+        Update-UI "Note non deposee" 92 "     -> Note non deposee : $($_.Exception.Message)" "Red"
+    }
+    Start-Sleep -Milliseconds 300
+
+    # ===========================================================
+    # 14. MRT (outil de suppression de logiciels malveillants Windows)
+    # ===========================================================
+    Update-UI "Lancement de MRT..." 96 "[14/14] Lancement de MRT (suppression de logiciels malveillants)..." "Cyan"
+    try {
+        $mrtExe = Join-Path $env:SystemRoot 'System32\MRT.exe'
+        if ($AutoMode) {
+            # Personne devant l'ecran : analyse rapide silencieuse, en arriere-plan
+            Start-Process $mrtExe -ArgumentList '/Q' -ErrorAction Stop
+        } else {
+            Start-Process $mrtExe -ErrorAction Stop
+        }
+        Update-UI "MRT lance" 98 "     -> MRT lance." "Lime"
+    } catch {
+        Update-UI "MRT non lance" 98 "     -> MRT introuvable sur ce PC : $($_.Exception.Message)" "Yellow"
+    }
     Start-Sleep -Milliseconds 500
 
     $progressBar.Value = 100
@@ -748,7 +670,7 @@ $form.Add_Shown({
     $labelStep.Text = "Optimisation terminee !"
     $labelStep.ForeColor = [System.Drawing.Color]::FromArgb(0,255,150)
     $logBox.SelectionColor = [System.Drawing.Color]::FromArgb(0,255,150)
-    $logBox.AppendText("`nTERMINE ! Rapport sur le Bureau.`n")
+    $logBox.AppendText("`nTERMINE ! Note Secureetech deposee sur le Bureau.`n")
     $logBox.AppendText("Cette fenetre reste ouverte : cliquez sur Fermer quand vous avez fini de la consulter.`n")
     $logBox.ScrollToCaret()
     $btnClose.Visible = $true
@@ -770,7 +692,7 @@ if (-not $AutoMode) {
     Write-Host ""
     Write-Host "==============================================" -ForegroundColor Green
     Write-Host "  Optimisation SecureeTech terminee." -ForegroundColor Green
-    Write-Host "  Le rapport complet a ete enregistre sur le Bureau." -ForegroundColor Green
+    Write-Host "  La note Secureetech a ete deposee sur le Bureau." -ForegroundColor Green
     Write-Host "==============================================" -ForegroundColor Green
     Read-Host "Appuyez sur Entree pour fermer cette fenetre PowerShell"
 }
